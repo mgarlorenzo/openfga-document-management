@@ -1,0 +1,128 @@
+{
+  "schema_version": "1.1",
+  "type_definitions": [
+    {
+      "type": "employee",
+      "relations": {
+        "manager": {
+          "this": {}
+        },
+        "department": {
+          "this": {}
+        }
+      },
+      "metadata": {
+        "relations": {
+          "manager": {
+            "directly_related_user_types": [
+              {
+                "type": "employee"
+              }
+            ]
+          },
+          "department": {
+            "directly_related_user_types": [
+              {
+                "type": "department"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "department",
+      "relations": {
+        "member": {
+          "this": {}
+        },
+        "documents": {
+          "this": {}
+        }
+      },
+      "metadata": {
+        "relations": {
+          "member": {
+            "directly_related_user_types": [
+              {
+                "type": "employee"
+              }
+            ]
+          },
+          "documents": {
+            "directly_related_user_types": [
+              {
+                "type": "document"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "document",
+      "relations": {
+        "owner": {
+          "this": {}
+        },
+        "department": {
+          "this": {}
+        },
+        "reader": {
+          "union": {
+            "child": [
+              {
+                "this": {}
+              },
+              {
+                "tupleToUserset": {
+                  "tupleset": {
+                    "relation": "owner"
+                  },
+                  "computedUserset": {
+                    "relation": "manager"
+                  }
+                }
+              },
+              {
+                "tupleToUserset": {
+                  "tupleset": {
+                    "relation": "department"
+                  },
+                  "computedUserset": {
+                    "relation": "member"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "owner": {
+            "directly_related_user_types": [
+              {
+                "type": "employee"
+              }
+            ]
+          },
+          "department": {
+            "directly_related_user_types": [
+              {
+                "type": "department"
+              }
+            ]
+          },
+          "reader": {
+            "directly_related_user_types": [
+              {
+                "type": "employee"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
