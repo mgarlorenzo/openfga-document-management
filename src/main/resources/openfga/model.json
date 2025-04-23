@@ -7,6 +7,21 @@
         "manager": {
           "this": {}
         },
+        "manager_chain": {
+          "union": {
+            "child": [
+              {
+                "this": {}
+              },
+              {
+                "tupleToUserset": {
+                  "tupleset": { "relation": "manager" },
+                  "computedUserset": { "relation": "manager_chain" }
+                }
+              }
+            ]
+          }
+        },
         "department": {
           "this": {}
         }
@@ -14,6 +29,13 @@
       "metadata": {
         "relations": {
           "manager": {
+            "directly_related_user_types": [
+              {
+                "type": "employee"
+              }
+            ]
+          },
+          "manager_chain": {
             "directly_related_user_types": [
               {
                 "type": "employee"
@@ -76,22 +98,14 @@
               },
               {
                 "tupleToUserset": {
-                  "tupleset": {
-                    "relation": "owner"
-                  },
-                  "computedUserset": {
-                    "relation": "manager"
-                  }
+                  "tupleset": { "relation": "owner" },
+                  "computedUserset": { "relation": "manager_chain" }
                 }
               },
               {
                 "tupleToUserset": {
-                  "tupleset": {
-                    "relation": "department"
-                  },
-                  "computedUserset": {
-                    "relation": "member"
-                  }
+                  "tupleset": { "relation": "department" },
+                  "computedUserset": { "relation": "member" }
                 }
               }
             ]
