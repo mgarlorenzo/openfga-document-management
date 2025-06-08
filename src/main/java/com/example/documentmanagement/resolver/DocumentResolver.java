@@ -9,6 +9,7 @@ import org.springframework.stereotype.Controller;
 
 import com.example.documentmanagement.model.Document;
 import com.example.documentmanagement.model.Employee;
+import com.example.documentmanagement.model.CreateDocumentInput;
 import com.example.documentmanagement.repository.EmployeeRepository;
 import com.example.documentmanagement.service.DocumentService;
 
@@ -66,33 +67,39 @@ public class DocumentResolver {
     }
 
     @MutationMapping
-    public Mono<Document> createDocument(@Argument String title, @Argument String content) {
+    public Mono<Document> createDocument(@Argument CreateDocumentInput input, @Argument Long employeeId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("Authentication for createDocument: {}", authentication);
-        
+        log.info("Creating document {} for employee {}", input.title(), employeeId);
+
         if (authentication == null || !authentication.isAuthenticated()) {
             log.warn("No authentication found or user not authenticated for createDocument");
             return Mono.empty();
         }
 
         String username = authentication.getName();
-        log.info("Username for createDocument: {}", username);
-        
-        Employee employee = employeeRepository.findByUsername(username)
-                .orElse(null);
-                
-        if (employee == null) {
-            log.warn("No employee found for username: {}", username);
-            return Mono.empty();
-        }
+        return Mono.fromSupplier(() -> employeeRepository.findByUsername(username).orElse(null))
+            .flatMap(employee -> {
+                if (employee == null) {
+                    log.warn("No employee found for username: {}", username);
+                    return Mono.empty();
+                }
 
-        log.info("Creating document for employee: {} {}", employee.getName(), employee.getSurname());
-        
-        Document document = new Document();
-        document.setTitle(title);
-        document.setContent(content);
-        return documentService.createDocument(document, employee)
-                .doOnSuccess(doc -> log.info("Created document: {}", doc.getTitle()));
+                if (!employee.getId().equals(employeeId)) {
+                    log.warn("Authenticated employee ID {} does not match provided employeeId {}", employee.getId(), employeeId);
+                    return Mono.empty();
+                }
+
+                Document document = new Document();
+                document.setTitle(input.title());
+                document.setContent(input.content());
+                document.setClassificationLevel(input.classificationLevel());
+                return documentService.createDocument(document, employee);
+            })
+            .doOnSuccess(doc -> {
+                if (doc != null) {
+                    log.info("Created document: {}", doc.getTitle());
+                }
+            });
     }
 
     @MutationMapping
