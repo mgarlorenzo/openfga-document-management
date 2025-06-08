@@ -160,7 +160,7 @@ The system implements a hierarchical structure with the following levels:
 1. Clone the repository
 2. Configure environment variables:
    ```properties
-   OPENFGA_API_URL=http://localhost:8080
+   OPENFGA_API_URL=http://localhost:9090
    OPENFGA_API_TOKEN=your_api_token
    OPENFGA_STORE_ID=your_store_id
    ```
@@ -189,7 +189,7 @@ The system implements a hierarchical structure with the following levels:
    }
    ```
    ```bash
-   curl -X POST http://localhost:8080/graphql \
+   curl -X POST http://localhost:9090/graphql \
      -H "Content-Type: application/json" \
      -d '{
        "query": "query { users { id name department { name } manager { name } } }"
@@ -217,7 +217,7 @@ The system implements a hierarchical structure with the following levels:
    }
    ```
    ```bash
-   curl -X POST http://localhost:8080/graphql \
+   curl -X POST http://localhost:9090/graphql \
      -H "Content-Type: application/json" \
      -d '{
        "query": "query { user(id: \"1\") { name documents { id title description department { name } } } }"
@@ -241,7 +241,7 @@ The system implements a hierarchical structure with the following levels:
    }
    ```
    ```bash
-   curl -X POST http://localhost:8080/graphql \
+   curl -X POST http://localhost:9090/graphql \
      -H "Content-Type: application/json" \
      -d '{
        "query": "query { department(id: \"1\") { name documents { id title description owner { name } } } }"
@@ -268,7 +268,7 @@ The system implements a hierarchical structure with the following levels:
    }
    ```
    ```bash
-   curl -X POST http://localhost:8080/graphql \
+   curl -X POST http://localhost:9090/graphql \
      -H "Content-Type: application/json" \
      -d '{
        "query": "query { user(id: \"6\") { name documents { id title description department { name } } } }"
@@ -297,7 +297,7 @@ The system implements a hierarchical structure with the following levels:
    }
    ```
    ```bash
-   curl -X POST http://localhost:8080/graphql \
+   curl -X POST http://localhost:9090/graphql \
      -H "Content-Type: application/json" \
      -d '{
        "query": "query { user(id: \"5\") { name documents { id title description department { name } } } }"
@@ -326,7 +326,7 @@ The system implements a hierarchical structure with the following levels:
    }
    ```
    ```bash
-   curl -X POST http://localhost:8080/graphql \
+   curl -X POST http://localhost:9090/graphql \
      -H "Content-Type: application/json" \
      -d '{
        "query": "query { user(id: \"3\") { name documents { id title description department { name } } } }"
@@ -355,7 +355,7 @@ The system implements a hierarchical structure with the following levels:
    }
    ```
    ```bash
-   curl -X POST http://localhost:8080/graphql \
+   curl -X POST http://localhost:9090/graphql \
      -H "Content-Type: application/json" \
      -d '{
        "query": "query { user(id: \"1\") { name documents { id title description department { name } } } }"
