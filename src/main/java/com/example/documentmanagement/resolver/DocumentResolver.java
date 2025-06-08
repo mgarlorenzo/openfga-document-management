@@ -104,7 +104,13 @@ public class DocumentResolver {
                     document.setContent(content);
                     return documentService.createDocument(document, document.getOwner());
                 })
-                .doOnSuccess(doc -> log.info("Updated document: {}", doc.getTitle()));
+                .doOnSuccess(doc -> {
+                    if (doc != null) {
+                        log.info("Updated document: {}", doc.getTitle());
+                    } else {
+                        log.warn("No document found with ID: {}", id);
+                    }
+                });
     }
 
     @MutationMapping
