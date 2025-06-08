@@ -1,0 +1,90 @@
+enum NationalIdType {
+    DNI
+    NIE
+    PASSPORT
+    SSN
+    NIF
+    CPF
+    OTHER
+}
+
+type Employee {
+    id: ID!
+    nationalIdType: NationalIdType!
+    nationalIdNumber: String!
+    issuingCountry: String!
+    name: String!
+    surname: String!
+    address: String
+    username: String!
+    email: String!
+    department: Department!
+    role: String
+    clearanceLevel: String
+    location: String
+    admin: Boolean!
+    manager: Employee
+}
+
+type Department {
+    id: ID!
+    name: String!
+    description: String
+    location: String
+    employees: [Employee]
+}
+
+type Document {
+    id: ID!
+    title: String!
+    content: String!
+    classificationLevel: String!
+    department: Department!
+    owner: Employee!
+    createdAt: String
+    status: String
+}
+
+type Query {
+    employees: [Employee]
+    employee(id: ID!): Employee
+    documents: [Document]
+    document(id: ID!): Document
+    documentsByDepartment(departmentId: ID!): [Document]
+}
+
+type Mutation {
+    createEmployee(input: CreateEmployeeInput!): Employee
+    createDepartment(input: CreateDepartmentInput!): Department
+    createDocument(input: CreateDocumentInput!, employeeId: ID!): Document
+}
+
+input CreateEmployeeInput {
+    nationalIdType: NationalIdType!
+    nationalIdNumber: String!
+    issuingCountry: String!
+    name: String!
+    surname: String!
+    address: String
+    username: String!
+    email: String!
+    departmentId: ID
+    role: String
+    clearanceLevel: String
+    location: String
+    admin: Boolean
+    managerId: ID
+}
+
+input CreateDepartmentInput {
+    name: String!
+    description: String
+    location: String
+}
+
+input CreateDocumentInput {
+    title: String!
+    content: String!
+    departmentId: ID!
+    classificationLevel: String!
+}

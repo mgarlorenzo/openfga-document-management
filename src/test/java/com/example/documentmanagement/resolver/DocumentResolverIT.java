@@ -5,19 +5,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.graphql.test.tester.HttpGraphQlTester;
+import org.springframework.http.HttpHeaders;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.Base64Utils;
+
 import com.example.documentmanagement.model.Department;
 import com.example.documentmanagement.model.Employee;
 import com.example.documentmanagement.model.NationalIdType;
 import com.example.documentmanagement.repository.DepartmentRepository;
 import com.example.documentmanagement.repository.EmployeeRepository;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.graphql.test.tester.GraphQlTester;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.http.HttpHeaders;
-import org.springframework.util.Base64Utils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.test.autoconfigure.graphql.tester.AutoConfigureGraphQlTester;
 
@@ -27,7 +27,7 @@ import org.springframework.boot.test.autoconfigure.graphql.tester.AutoConfigureG
 class DocumentResolverIT {
 
     @Autowired
-    private GraphQlTester graphQlTester;
+    private HttpGraphQlTester graphQlTester;
 
     @Autowired
     private EmployeeRepository employeeRepository;
@@ -54,7 +54,9 @@ class DocumentResolverIT {
         employee.setPassword(passwordEncoder.encode("password"));
         employee.setEmail("ana.gomez@example.com");
         employee.setDepartment(department);
-        employee = employeeRepository.save(employee);
+        employee = employeeRepository.save(employee); // employee is reassigned here
+
+        final String expectedEmployeeId = employee.getId().toString(); // final variable for lambda
 
         String mutation = """
             mutation($input: CreateDocumentInput!, $employeeId: ID!) {
@@ -74,22 +76,19 @@ class DocumentResolverIT {
         input.put("departmentId", department.getId());
         input.put("classificationLevel", "personal");
 
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("input", input);
-        variables.put("employeeId", employee.getId());
-
         String authHeader = "Basic " + Base64Utils.encodeToString("agomez:password".getBytes());
-        GraphQlTester authTester = graphQlTester.mutate()
-            .header(HttpHeaders.AUTHORIZATION, authHeader)
+        HttpGraphQlTester authTester = graphQlTester.mutate()
+            .headers(h -> h.set(HttpHeaders.AUTHORIZATION, authHeader))
             .build();
 
         authTester.document(mutation)
-            .variables(variables)
+            .variable("input", input)
+            .variable("employeeId", employee.getId()) // employee.getId() itself is fine, the object 'employee' was the issue
             .execute()
             .path("createDocument.title").entity(String.class)
             .satisfies(t -> assertThat(t).isEqualTo("Test GraphQL Document"))
             .path("createDocument.owner.id").entity(String.class)
-            .satisfies(id -> assertThat(id).isEqualTo(employee.getId().toString()))
+            .satisfies(id -> assertThat(id).isEqualTo(expectedEmployeeId)) // Use final variable
             .path("createDocument.classificationLevel").entity(String.class)
             .isEqualTo("personal");
     }
@@ -100,7 +99,7 @@ class DocumentResolverIT {
         department.setName("IT");
         department = departmentRepository.save(department);
 
-        Employee authEmployee = new Employee();
+        Employee authEmployee = new Employee(); // This is fine, not used in lambda for this test's assertions
         authEmployee.setNationalIdType(NationalIdType.DNI);
         authEmployee.setNationalIdNumber("0002");
         authEmployee.setIssuingCountry("ES");
@@ -112,7 +111,7 @@ class DocumentResolverIT {
         authEmployee.setDepartment(department);
         authEmployee = employeeRepository.save(authEmployee);
 
-        Employee targetEmployee = new Employee();
+        Employee targetEmployee = new Employee(); // This is fine for .variable call
         targetEmployee.setNationalIdType(NationalIdType.DNI);
         targetEmployee.setNationalIdNumber("0003");
         targetEmployee.setIssuingCountry("ES");
@@ -138,17 +137,14 @@ class DocumentResolverIT {
         input.put("departmentId", department.getId());
         input.put("classificationLevel", "personal");
 
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("input", input);
-        variables.put("employeeId", targetEmployee.getId());
-
         String authHeader = "Basic " + Base64Utils.encodeToString("llopez:password".getBytes());
-        GraphQlTester authTester = graphQlTester.mutate()
-            .header(HttpHeaders.AUTHORIZATION, authHeader)
+        HttpGraphQlTester authTester = graphQlTester.mutate()
+            .headers(h -> h.set(HttpHeaders.AUTHORIZATION, authHeader))
             .build();
 
         authTester.document(mutation)
-            .variables(variables)
+            .variable("input", input)
+            .variable("employeeId", targetEmployee.getId()) // targetEmployee.getId() is fine
             .execute()
             .path("createDocument").valueIsNull();
     }
