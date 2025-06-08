@@ -396,3 +396,12 @@ The application automatically seeds data on startup:
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request 
+## Deployment to Google Cloud Run
+
+A GitHub Actions workflow is included to build and deploy the application. Configure these repository secrets:
+- `GCP_PROJECT`: your Google Cloud project ID
+- `GCP_REGION`: target Cloud Run region
+- `WORKLOAD_IDENTITY_PROVIDER`: Workload Identity Provider name
+- `SERVICE_ACCOUNT`: service account email with Cloud Run permissions
+
+With the secrets in place, pushes to `main` automatically trigger a deployment.
