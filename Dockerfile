@@ -9,10 +9,10 @@ WORKDIR /app
 
 # Install OpenFGA
 RUN apt-get update && apt-get install -y curl unzip && \
-    curl -L https://github.com/openfga/openfga/releases/latest/download/openfga_linux_amd64.zip -o openfga.zip && \
-    unzip openfga.zip && \
+    curl -L https://github.com/openfga/openfga/releases/download/v1.4.3/openfga_1.4.3_linux_amd64.tar.gz -o openfga.tar.gz && \
+    tar -xzf openfga.tar.gz && \
     mv openfga /usr/local/bin/ && \
-    rm openfga.zip && \
+    rm openfga.tar.gz && \
     apt-get remove -y unzip && \
     apt-get autoremove -y && \
     apt-get clean && \
