@@ -33,20 +33,20 @@ The system implements a hierarchical structure with the following levels:
      - Ana Ruiz (Employee)
      - Xavi Moreno (Employee)
 
-### Access Control Rules
-1. Personal Documents:
-   - Owner has full access
-   - Owner's manager has read access
-   - HR department users have read access
+## Authorization Rules
 
-2. Department Documents:
-   - Owner has full access
-   - Department members have read access
-   - Owner's manager has read access
-   - HR department users have read access
+### 1. Personal Documents
+- **Owner**: Full access
+- **Owner's Manager**: Read access
+- **HR Department Users**: Read access to all documents
 
+### 2. Department Documents
+- **Owner**: Full access
+- **Department Members**: Read access
+- **Owner's Manager**: Read access
+- **HR Department Users**: Read access to all documents
 
-## OpenFGA Configuration
+## OpenFGA Implementation
 
 ### Authorization Model Types
 
@@ -152,256 +152,211 @@ The system implements a hierarchical structure with the following levels:
         }
       }
     }
-      
    ```
+
+### Components
+
+1. **OpenFGAConfig**
+   - OpenFGA client configuration
+   - Connection with OpenFGA server using `application.properties`
+
+2. **AuthorizationService**
+   - `canReadDocument()`: Verifies if an employee can read a specific document
+   - `createEmployeeTuples()`: Creates relation tuples when an employee is created
+   - `createDocumentTuples()`: Creates relation tuples when a document is created
+
+3. **DocumentService (Modified)**
+   - `getAccessibleDocuments()`: Now filters documents based on OpenFGA permissions
+   - `getDocumentById()`: New version that verifies permissions before returning document
+   - `createDocument()`: Creates OpenFGA tuples automatically when creating documents
+
+4. **DocumentResolver (Modified)**
+   - GraphQL endpoints now verify authentication and authorization
+   - Only returns documents for which the user has permissions
+
+5. **EmployeeResolver (Modified)**
+   - Creates OpenFGA tuples automatically when creating employees
+
+6. **DataSeeder (Modified)**
+   - Creates OpenFGA tuples for all test data on initialization
 
 ## Getting Started
 
 1. Clone the repository
 2. Configure environment variables:
    ```properties
-   OPENFGA_API_URL=http://localhost:9090
-   OPENFGA_API_TOKEN=your_api_token
-   OPENFGA_STORE_ID=your_store_id
+   # OpenFGA Configuration
+   openfga.api-url=http://localhost:9080
+   openfga.store-id=01JQ8M4HYK516V41AEBA42PFCR
+   openfga.api-token=mysecret
    ```
-3. Run the application:
+3. Run OpenFGA server:
+   ```bash
+   docker run --rm -p 9080:8080 openfga/openfga run
+   ```
+4. Run the application:
    ```bash
    ./mvnw spring-boot:run
    ```
 
 ## API Endpoints
 
-### GraphQL Queries
+### 1. Get All Employees (No authorization required)
 
-1. Get All Users:
-   ```graphql
-   query {
-     users {
-       id
-       name
-       department {
-         name
-       }
-       manager {
-         name
-       }
-     }
-   }
-   ```
-   ```bash
-   curl -X POST http://localhost:9090/graphql \
-     -H "Content-Type: application/json" \
-     -d '{
-       "query": "query { users { id name department { name } manager { name } } }"
-     }'
-   ```
-   # Returns:
-   # - List of all users in the system
-   # - Each user's department information
-   # - Each user's manager information
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "query { employees { id name surname email department { name } manager { name surname } } }"
+  }'
+```
 
-2. Get User's Documents:
-   ```graphql
-   query {
-     user(id: "1") {
-       name
-       documents {
-         id
-         title
-         description
-         department {
-           name
-         }
-       }
-     }
-   }
-   ```
-   ```bash
-   curl -X POST http://localhost:9090/graphql \
-     -H "Content-Type: application/json" \
-     -d '{
-       "query": "query { user(id: \"1\") { name documents { id title description department { name } } } }"
-     }'
-   ```
+### 2. Get Accessible Documents by User
 
-3. Get Department Documents:
-   ```graphql
-   query {
-     department(id: "1") {
-       name
-       documents {
-         id
-         title
-         description
-         owner {
-           name
-         }
-       }
-     }
-   }
-   ```
-   ```bash
-   curl -X POST http://localhost:9090/graphql \
-     -H "Content-Type: application/json" \
-     -d '{
-       "query": "query { department(id: \"1\") { name documents { id title description owner { name } } } }"
-     }'
-   ```
+**HR User (sees all documents):**
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'hrBoss:password123' | base64)" \
+  -d '{
+    "query": "query { documents { id title classificationLevel department { name } owner { name surname } } }"
+  }'
+```
 
-### Example Permission Verification
+**HR Manager (sees HR documents + subordinates):**
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'hrManager1:password123' | base64)" \
+  -d '{
+    "query": "query { documents { id title classificationLevel department { name } owner { name surname } } }"
+  }'
+```
 
-1. Regular Employee Access:
-   ```graphql
-   # Login as a regular employee (e.g., Pedro Fernandez)
-   query {
-     user(id: "6") {
-       name
-       documents {
-         id
-         title
-         description
-         department {
-           name
-         }
-       }
-     }
-   }
-   ```
-   ```bash
-   curl -X POST http://localhost:9090/graphql \
-     -H "Content-Type: application/json" \
-     -d '{
-       "query": "query { user(id: \"6\") { name documents { id title description department { name } } } }"
-     }'
-   ```
-   # Should see:
-   # - Their personal document
-   # - Documents from the Sales department
-   # - Documents owned by their manager (Juan Sanchez)
+**HR Employee (sees HR documents):**
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'hrEmployee1:password123' | base64)" \
+  -d '{
+    "query": "query { documents { id title classificationLevel department { name } owner { name surname } } }"
+  }'
+```
 
-2. Manager Access:
-   ```graphql
-   # Login as a manager (e.g., Juan Sanchez)
-   query {
-     user(id: "5") {
-       name
-       documents {
-         id
-         title
-         description
-         department {
-           name
-         }
-       }
-     }
-   }
-   ```
-   ```bash
-   curl -X POST http://localhost:9090/graphql \
-     -H "Content-Type: application/json" \
-     -d '{
-       "query": "query { user(id: \"5\") { name documents { id title description department { name } } } }"
-     }'
-   ```
-   # Should see:
-   # - Their own documents
-   # - Documents of their subordinates (Pedro and Pablo)
-   # - All Sales department documents
+**Sales Boss (sees department documents + subordinates):**
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'salesBoss:password123' | base64)" \
+  -d '{
+    "query": "query { documents { id title classificationLevel department { name } owner { name surname } } }"
+  }'
+```
 
-3. HR Department Access:
-   ```graphql
-   # Login as an HR user (e.g., Rosa Martinez)
-   query {
-     user(id: "3") {
-       name
-       documents {
-         id
-         title
-         description
-         department {
-           name
-         }
-       }
-     }
-   }
-   ```
-   ```bash
-   curl -X POST http://localhost:9090/graphql \
-     -H "Content-Type: application/json" \
-     -d '{
-       "query": "query { user(id: \"3\") { name documents { id title description department { name } } } }"
-     }'
-   ```
-   # Should see:
-   # - All documents across all departments
-   # - Documents from HR, Sales, and Marketing departments
-   # - Documents owned by all users in the system
+**Marketing Employee (sees only department documents):**
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'random0_marketing:password123' | base64)" \
+  -d '{
+    "query": "query { documents { id title classificationLevel department { name } owner { name surname } } }"
+  }'
+```
 
-4. Department Boss Access:
-   ```graphql
-   # Login as a department boss (e.g., Melissa Garcia)
-   query {
-     user(id: "1") {
-       name
-       documents {
-         id
-         title
-         description
-         department {
-           name
-         }
-       }
-     }
-   }
-   ```
-   ```bash
-   curl -X POST http://localhost:9090/graphql \
-     -H "Content-Type: application/json" \
-     -d '{
-       "query": "query { user(id: \"1\") { name documents { id title description department { name } } } }"
-     }'
-   ```
-   # Should see:
-   # - All documents in the HR department
-   # - Documents of all HR department subordinates (Rosa and David)
-   # - Their own personal documents
+### 3. Get Specific Document by ID
 
-## Data Seeding
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'hrEmployee1:password123' | base64)" \
+  -d '{
+    "query": "query { document(id: 1) { id title content classificationLevel department { name } owner { name surname } } }"
+  }'
+```
 
-The application automatically seeds data on startup:
+### 4. Create New Document (Creates OpenFGA tuples automatically)
 
-1. Departments:
-   - Sales
-   - HR
-   - Product
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'hrEmployee1:password123' | base64)" \
+  -d '{
+    "query": "mutation($input: CreateDocumentInput!, $employeeId: ID!) { createDocument(input: $input, employeeId: $employeeId) { id title classificationLevel owner { name } department { name } } }",
+    "variables": {
+      "input": {
+        "title": "New Test Document",
+        "content": "Document content",
+        "departmentId": 1,
+        "classificationLevel": "personal"
+      },
+      "employeeId": "5"
+    }
+  }'
+```
 
-2. Users per Department:
-   - 1 Department Boss (LEVEL3)
-   - 2 Managers (LEVEL2)
-   - 7 Regular Employees (LEVEL1)
+### 5. Create New Employee (Creates OpenFGA tuples automatically)
 
-3. Documents per User:
-   - 2 Personal Documents
-   - 8 Department Documents
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "mutation($input: CreateUserInput!) { createEmployee(input: $input) { id name surname email department { name } } }",
+    "variables": {
+      "input": {
+        "nationalIdType": "DNI",
+        "nationalIdNumber": "12345678Z",
+        "issuingCountry": "Spain",
+        "name": "Juan",
+        "surname": "Pérez",
+        "address": "Calle Test 123",
+        "username": "jperez",
+        "email": "jperez@company.com",
+        "location": "Madrid",
+        "departmentId": 1
+      }
+    }
+  }'
+```
 
-4. Special Access:
-   - HR department users get read access to all documents
-   - Department members get read access to department documents
-   - Managers get read access to their subordinates' documents
+## Expected Behavior
 
-## Contributing
+### HR User
+- **Sees**: All system documents
+- **Reason**: HR has special access to all documents according to rules
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request 
-## Deployment to Google Cloud Run
+### Department Manager
+- **Sees**: Department documents + subordinate documents
+- **Reason**: Managers have access to documents of employees they supervise
 
-A GitHub Actions workflow is included to build and deploy the application. Configure these repository secrets:
-- `GCP_PROJECT`: your Google Cloud project ID
-- `GCP_REGION`: target Cloud Run region
-- `WORKLOAD_IDENTITY_PROVIDER`: Workload Identity Provider name
-- `SERVICE_ACCOUNT`: service account email with Cloud Run permissions
+### Regular Employee
+- **Sees**: Department documents + own documents
+- **Reason**: Employees have access to departmental and personal documents
 
-With the secrets in place, pushes to `main` automatically trigger a deployment.
+### Users from Other Departments
+- **Sees**: Only documents from their own department
+- **Reason**: No hierarchical or departmental relationship, limited access
+
+## Troubleshooting
+
+### Error: "OpenFGA server not reachable"
+- Verify OpenFGA is running on port 9080
+- Check configuration in application.properties
+
+### Error: "No tuples created"
+- Check application logs
+- Confirm store-id is correct
+- Verify OpenFGA authentication
+
+### Documents not filtered correctly
+- Verify tuples were created correctly
+- Check AuthorizationService logs
+- Confirm OpenFGA model is loaded
+
+## Next Steps
+
+To improve the implementation:
+1. Add cache for permission checks
+2. Implement bulk permission checks
+3. Add performance metrics
+4. Implement tuple cleanup when deleting entities
+5. Add integration tests for authorization
