@@ -55,13 +55,28 @@ public class DocumentResolver {
 
     @QueryMapping
     public Mono<Document> document(@Argument Long id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         log.info("Fetching document with ID: {}", id);
-        return documentService.getDocumentById(id)
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            log.warn("No authentication found or user not authenticated");
+            return Mono.empty();
+        }
+
+        String username = authentication.getName();
+        Employee employee = employeeRepository.findByUsername(username).orElse(null);
+        
+        if (employee == null) {
+            log.warn("No employee found for username: {}", username);
+            return Mono.empty();
+        }
+
+        return documentService.getDocumentById(id, employee)
                 .doOnSuccess(doc -> {
                     if (doc != null) {
-                        log.info("Found document: {}", doc.getTitle());
+                        log.info("Employee {} accessed document: {}", employee.getName(), doc.getTitle());
                     } else {
-                        log.warn("No document found with ID: {}", id);
+                        log.warn("Employee {} denied access to document with ID: {}", employee.getName(), id);
                     }
                 });
     }

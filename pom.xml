@@ -68,6 +68,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- OpenFGA SDK -->
+		<dependency>
+			<groupId>dev.openfga</groupId>
+			<artifactId>openfga-sdk</artifactId>
+			<version>0.4.0</version>
+		</dependency>
+
 		<!-- Lombok -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
