@@ -18,6 +18,7 @@ import com.example.documentmanagement.model.NationalIdType;
 import com.example.documentmanagement.repository.DepartmentRepository;
 import com.example.documentmanagement.repository.DocumentRepository;
 import com.example.documentmanagement.repository.EmployeeRepository;
+import com.example.documentmanagement.service.AuthorizationService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -42,6 +43,7 @@ public class DataSeeder implements CommandLineRunner {
     private final EmployeeRepository employeeRepository;
     private final DocumentRepository documentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthorizationService authorizationService;
 
     @Override
     @Transactional
@@ -111,6 +113,10 @@ public class DataSeeder implements CommandLineRunner {
                 logger.info("Document: {} (ID: {}) - Owner: {} - Department: {}", 
                     doc.getTitle(), doc.getId(), doc.getOwner().getName(), doc.getDepartment().getName()));
         }
+
+        // Create OpenFGA tuples for all employees and documents
+        logger.info("Creating OpenFGA tuples for all entities...");
+        createOpenFGATuples(allEmployees, documentRepository.findAll());
 
         logger.info("Data seeding completed successfully");
     }
@@ -213,5 +219,29 @@ public class DataSeeder implements CommandLineRunner {
         deptDoc.setStatus("active");
         documentRepository.save(deptDoc);
         logger.info("Created department document for employee {}: {}", employee.getName(), deptDoc.getTitle());
+    }
+
+    private void createOpenFGATuples(List<Employee> employees, List<Document> documents) {
+        logger.info("Creating OpenFGA tuples for {} employees and {} documents", employees.size(), documents.size());
+        
+        // Create employee tuples
+        for (Employee employee : employees) {
+            authorizationService.createEmployeeTuples(employee)
+                    .subscribe(
+                        unused -> logger.debug("Created tuples for employee: {}", employee.getId()),
+                        error -> logger.error("Failed to create tuples for employee: {}", employee.getId(), error)
+                    );
+        }
+        
+        // Create document tuples
+        for (Document document : documents) {
+            authorizationService.createDocumentTuples(document)
+                    .subscribe(
+                        unused -> logger.debug("Created tuples for document: {}", document.getId()),
+                        error -> logger.error("Failed to create tuples for document: {}", document.getId(), error)
+                    );
+        }
+        
+        logger.info("OpenFGA tuple creation initiated for all entities");
     }
 } 

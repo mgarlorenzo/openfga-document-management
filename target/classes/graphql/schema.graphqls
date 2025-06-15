@@ -87,4 +87,4 @@ input CreateDocumentInput {
     content: String!
     departmentId: ID!
     classificationLevel: String!
-}
+} 

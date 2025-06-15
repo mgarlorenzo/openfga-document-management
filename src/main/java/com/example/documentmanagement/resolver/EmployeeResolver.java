@@ -12,15 +12,21 @@ import com.example.documentmanagement.model.Department;
 import com.example.documentmanagement.model.Employee;
 import com.example.documentmanagement.repository.DepartmentRepository;
 import com.example.documentmanagement.repository.EmployeeRepository;
+import com.example.documentmanagement.service.AuthorizationService;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Controller
 public class EmployeeResolver {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
+    private final AuthorizationService authorizationService;
 
-    public EmployeeResolver(EmployeeRepository employeeRepository, DepartmentRepository departmentRepository) {
+    public EmployeeResolver(EmployeeRepository employeeRepository, DepartmentRepository departmentRepository, AuthorizationService authorizationService) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
+        this.authorizationService = authorizationService;
     }
 
     @QueryMapping
@@ -35,6 +41,7 @@ public class EmployeeResolver {
 
     @MutationMapping
     public Employee createEmployee(@Argument CreateUserInput input) {
+        log.info("Creating employee: {} {}", input.name(), input.surname());
         Employee employee = new Employee();
         employee.setNationalIdType(input.nationalIdType());
         employee.setNationalIdNumber(input.nationalIdNumber());
@@ -51,6 +58,16 @@ public class EmployeeResolver {
             employee.setDepartment(department);
         }
         
-        return employeeRepository.save(employee);
+        Employee savedEmployee = employeeRepository.save(employee);
+        log.info("Employee created successfully with ID: {}", savedEmployee.getId());
+        
+        // Create OpenFGA tuples for the new employee asynchronously
+        authorizationService.createEmployeeTuples(savedEmployee)
+                .subscribe(
+                    unused -> log.info("OpenFGA tuples created for employee: {}", savedEmployee.getId()),
+                    error -> log.error("Failed to create OpenFGA tuples for employee: {}", savedEmployee.getId(), error)
+                );
+        
+        return savedEmployee;
     }
 } 
